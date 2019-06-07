@@ -9,7 +9,7 @@ filegroup(
         "*.js",
         "src/*.js",
         "src/assets/**",
-        "*.vue",
+        "**/*.vue",
     ]),
 )
 
