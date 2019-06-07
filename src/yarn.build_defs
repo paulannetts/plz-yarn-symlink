@@ -1,0 +1,42 @@
+# runs an npm command and outputs the results back
+def yarn_command(name, yarn_cmd="", outs=None, srcs=None,
+                deps=None, visibility=None):
+    deps = (deps or []) 
+
+    full_cmd = (
+            "cd $PKG && " +
+            "yarn " + yarn_cmd +
+            " && mv * $TMP_DIR")
+    log.info(f"yarn command: {full_cmd}")
+
+    return genrule(
+        name = name,
+        outs=outs,
+        srcs=srcs,
+        tools = ["yarn"],
+        cmd = full_cmd,
+        visibility = visibility,
+        deps = deps,
+    )
+
+# a helper to run npm_install
+def yarn_install(name, deps=None, visibility=None):
+    return yarn_command(
+        name=name,
+        deps=deps,
+        outs=["package.json", "yarn.lock", "node_modules/"],
+        srcs=["package.json", "yarn.lock"],
+        yarn_cmd="install",
+        visibility=visibility
+    )
+
+def yarn_build(name, srcs, outs=None, deps=None, visibility=None):
+    outs = (outs or ["dist"]) 
+    return yarn_command(
+        name=name,
+        deps=deps,
+        outs=outs,
+        srcs=srcs,
+        yarn_cmd="build",
+        visibility=visibility
+    )
