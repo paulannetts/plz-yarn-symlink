@@ -1,0 +1,19 @@
+*.pyc
+*.so
+*.swp
+*.log
+.env
+.DS_Store
+plz-out
+.plz-*
+pkg/
+.plzconfig.local
+__pycache__
+*.iml
+*.egg-info
+*.tgz
+
+# User interface
+**/node_modules
+.vscode/
+
