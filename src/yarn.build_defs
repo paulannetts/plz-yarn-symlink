@@ -1,37 +1,93 @@
 # runs an npm command and outputs the results back
 def yarn_command(name, yarn_cmd="", outs=None, srcs=None,
-                deps=None, visibility=None):
+                deps=None, visibility=None, collect_cmd=None):
     deps = (deps or []) 
 
-    full_cmd = (
-            "cd $PKG && " +
-            "yarn " + yarn_cmd +
-            " && mv * $TMP_DIR")
-    log.info(f"yarn command: {full_cmd}")
+    cmds = [
+            "cd $PKG",
+            "yarn " + yarn_cmd]
+    if collect_cmd:
+        cmds.append(collect_cmd)
+    cmd_text = ' && '.join(cmds)
+    log.info(f"yarn command: {cmd_text}")
 
     return genrule(
         name = name,
         outs=outs,
         srcs=srcs,
         tools = ["yarn"],
-        cmd = full_cmd,
+        cmd = cmds,
+        visibility = visibility,
+        deps = deps,
+    )
+
+
+def create_symlink(name, outs=None, srcs=None,
+                deps=None, visibility=None):
+    deps = (deps or []) 
+
+    file_to_link = srcs[0]
+    _, file_name_to_link = split_path(file_to_link)
+    cmds = ["cd $PKG",
+            "mkdir my_sub_dir/links",
+            "cd my_sub_dir/links",
+            "ln -s ../" + file_name_to_link + " " + file_name_to_link,
+            "cd $TMP_DIR",
+            "cd $PKG",
+            "mv my_sub_dir $TMP_DIR/my_out_dir"]
+    cmd_text = ' && '.join(cmds)
+    log.info(f"command: {cmd_text}")
+
+    return genrule(
+        name = name,
+        outs=outs,
+        srcs=srcs,
+        tools = ["ln"],
+        cmd = cmds,
+        visibility = visibility,
+        deps = deps,
+    )
+
+def check_symlink(name, outs=None, srcs=None,
+                deps=None, visibility=None):
+    deps = (deps or []) 
+
+    file_to_link = srcs[0]
+    _, file_name_to_link = split_path(file_to_link)
+    link_file = join_path("my_out_dir/links", file_name_to_link)
+    cmds = ["cd $PKG",
+            'if [[ -L ' + link_file + ' ]]; then echo "OK - is a symlink"; else echo "BAD - is not a symlink" && exit -1; fi',
+            'cd $TMP_DIR',
+            'touch ok.txt']
+    cmd_text = ' && '.join(cmds)
+    log.info(f"command: {cmd_text}")
+
+    return genrule(
+        name = name,
+        outs=outs,
+        srcs=srcs,
+        tools = ["ln"],
+        cmd = cmds,
         visibility = visibility,
         deps = deps,
     )
 
 # a helper to run npm_install
 def yarn_install(name, deps=None, visibility=None):
+    collect_cmd = "mv package.json yarn.lock node_modules $TMP_DIR"
     return yarn_command(
         name=name,
         deps=deps,
         outs=["package.json", "yarn.lock", "node_modules/"],
         srcs=["package.json", "yarn.lock"],
         yarn_cmd="install",
+        collect_cmd=collect_cmd,
         visibility=visibility
     )
 
 def yarn_build(name, srcs, outs=None, deps=None, visibility=None):
-    outs = (outs or ["dist"]) 
+    outs = (outs or ["dist"])
+    collect_cmd = "mv dist $TMP_DIR"
     return yarn_command(
         name=name,
         deps=deps,
